@@ -25,10 +25,7 @@ class Wordle:
         self.make_attempt(input('Please input a word attempt!\n'))
 
     def make_attempt(self, attempt_word) -> None:
-        if not attempt_word:
-            raise ValueError('Invalid None value for attempt_word')
-        if len(attempt_word) != self.word_length:
-            raise ValueError('Invalid string length for attempt_word')
+        self._validate_word(attempt_word)
         self.attempts.append(attempt_word.upper())
         self._pretty_print_attempts()
 
@@ -51,10 +48,7 @@ class Wordle:
         self.get_attempt_response(response)
 
     def get_attempt_response(self, response):
-        if not response:
-            raise ValueError('Invalid None value for response')
-        if len(response) != self.word_length:
-            raise ValueError('Invalid string length for response')
+        self._validate_word(response)
         self.responses.append(response.upper())
         self._pretty_print_responses()
 
