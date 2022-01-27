@@ -14,10 +14,9 @@ class Wordle:
 
     # If answer is none, this Wordle does not have insight to the answer
     # and needs outside help from the user to determine how correct attempts are
-    def __init__(self, word_length, num_attempts, answer=None):
+    def __init__(self, word_length, num_attempts):
         self.word_length = word_length
         self.num_attempts = num_attempts
-        self.answer = answer and answer.upper()
         self.attempts = []
         self.responses = []
         self.correct_response = ''.join(['O' for _ in range(word_length)])
@@ -34,13 +33,12 @@ class Wordle:
         self._pretty_print_attempts()
 
     # Automatically respond with "closeness to answer"
-    def get_automated_attempt_response(self, attempt):
-        assert self.answer is not None
+    def get_automated_attempt_response(self, attempt, answer):
         response = ''
-        for i in range(len(self.answer)):
-            if attempt[i] == self.answer[i]:
+        for i in range(len(answer)):
+            if attempt[i] == answer[i]:
                 response += 'O'
-            elif attempt[i] in self.answer:
+            elif attempt[i] in answer:
                 response += '?'
             else:
                 response += 'X'
@@ -48,7 +46,6 @@ class Wordle:
 
     # Prompt user for the "closeness to answer" response to the solver's attempt
     def get_user_attempt_response(self):
-        assert self.answer is None
         response = input('Please input the response to the last attempt with not contained = X, '
                          'misplaced = ?, and correct = O. Example for word_length = 5: XXOX?\n')
         self.get_attempt_response(response)
@@ -63,7 +60,6 @@ class Wordle:
 
     # Returns true if game finished with a win. Returns false if game is left unfinished
     def play_wordle_alone_without_answer(self):
-        assert self.answer is None
         for attempt in range(self.num_attempts):
             self.make_attempt_with_input()
             self.get_user_attempt_response()
@@ -73,15 +69,22 @@ class Wordle:
         return False
 
     # Returns true if game finished with a win. Returns false if game is left unfinished
-    def play_wordle_alone_with_answer(self):
-        assert self.answer is not None
+    def play_wordle_alone_with_answer(self, answer):
+        self._validate_word(answer)
+        answer = answer.upper()
         for attempt in range(self.num_attempts):
             self.make_attempt_with_input()
-            if self.attempts[-1] == self.answer:
+            if self.attempts[-1] == answer:
                 print('Congratz, you solved the wordle!')
                 return True
-            self.get_automated_attempt_response(self.attempts[-1])
+            self.get_automated_attempt_response(self.attempts[-1], answer)
         return False
+
+    def _validate_word(self, word):
+        if not word:
+            raise ValueError('Invalid None value for response')
+        if len(word) != self.word_length:
+            raise ValueError('Invalid string length for response')
 
     def _pretty_print_attempts(self):
         for attempt in range(self.num_attempts):
@@ -104,5 +107,5 @@ class Wordle:
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    wordle = Wordle(args.word_length, args.num_attempts)
-    wordle.play_wordle_alone_without_answer()
+    wordle = Wordle(args.word_length, args.num_attempts, 'BULLY')
+    wordle.play_wordle_alone_with_answer()

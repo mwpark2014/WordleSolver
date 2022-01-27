@@ -22,13 +22,13 @@ class TestWordleSolverMethods(unittest.TestCase):
         self.assertEqual(wordle.play_wordle_alone_without_answer(), True)
 
     def test_play_wordle_alone_with_answer(self):
-        wordle = wordle_solver.Wordle(5, 6, 'POINT')
+        wordle = wordle_solver.Wordle(5, 6)
         wordle.make_attempt_with_input = Mock(side_effect = lambda: wordle.make_attempt('POINT'))
-        self.assertEqual(wordle.play_wordle_alone_with_answer(), True)
-        wordle = wordle_solver.Wordle(5, 6, 'POINT')
+        self.assertEqual(wordle.play_wordle_alone_with_answer('POINT'), True)
+        wordle = wordle_solver.Wordle(5, 6)
         wordle.make_attempt_with_input = Mock(side_effect=lambda: wordle.make_attempt('PINTS'))
-        self.assertEqual(wordle.play_wordle_alone_with_answer(), False)
+        self.assertEqual(wordle.play_wordle_alone_with_answer('POINT'), False)
         wordle = wordle_solver.Wordle(5, 6)
         wordle.make_attempt_with_input = Mock(side_effect=lambda: wordle.make_attempt('POINT'))
-        with self.assertRaises(AssertionError):
-            wordle.play_wordle_alone_with_answer()
+        with self.assertRaises(ValueError):
+            wordle.play_wordle_alone_with_answer(None)
