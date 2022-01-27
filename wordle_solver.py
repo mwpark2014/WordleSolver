@@ -44,33 +44,44 @@ class Wordle:
                 response += '?'
             else:
                 response += 'X'
-        self._pretty_print_responses()
-        self.responses.append(response)
-        return response
+        self.get_attempt_response(response)
 
     # Prompt user for the "closeness to answer" response to the solver's attempt
     def get_user_attempt_response(self):
         assert self.answer is None
         response = input('Please input the response to the last attempt with not contained = X, '
                          'misplaced = ?, and correct = O. Example for word_length = 5: XXOX?\n')
+        self.get_attempt_response(response)
+
+    def get_attempt_response(self, response):
         if not response:
             raise ValueError('Invalid None value for response')
         if len(response) != self.word_length:
             raise ValueError('Invalid string length for response')
         self.responses.append(response.upper())
         self._pretty_print_responses()
-        return response
 
+    # Returns true if game finished with a win. Returns false if game is left unfinished
     def play_wordle_alone_without_answer(self):
+        assert self.answer is None
         for attempt in range(self.num_attempts):
             self.make_attempt_with_input()
             self.get_user_attempt_response()
             if self.responses[-1] == self.correct_response:
                 print('Congratz, you solved the wordle!')
-                break
+                return True
+        return False
 
-    # def play_wordle_alone_with_answer(self):
-    #     for attempt in range(self.num_attempts):
+    # Returns true if game finished with a win. Returns false if game is left unfinished
+    def play_wordle_alone_with_answer(self):
+        assert self.answer is not None
+        for attempt in range(self.num_attempts):
+            self.make_attempt_with_input()
+            if self.attempts[-1] == self.answer:
+                print('Congratz, you solved the wordle!')
+                return True
+            self.get_automated_attempt_response(self.attempts[-1])
+        return False
 
     def _pretty_print_attempts(self):
         for attempt in range(self.num_attempts):
@@ -78,6 +89,7 @@ class Wordle:
                 display_char = self.attempts[attempt][char] if attempt < len(self.attempts) else '_'
                 print(display_char, end='')
             print()
+        print()
 
     def _pretty_print_responses(self):
         for attempt in range(self.num_attempts):
@@ -85,6 +97,7 @@ class Wordle:
                 display_char = self.responses[attempt][char] if attempt < len(self.responses) else '_'
                 print(display_char, end='')
             print()
+        print()
 
 
 # class WordleSolver:
