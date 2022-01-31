@@ -1,10 +1,12 @@
 import argparse
-import twl
 import heapq
+
+import twl
 
 parser = argparse.ArgumentParser(description='A Wordle puzzle solver.')
 parser.add_argument("-w", "--word_length", type=int, help="Set word length", default=5)
 parser.add_argument("-n", "--num_attempts", type=int, help="Set number of attempts", default=6)
+
 
 # The Wordle class defining a puzzle, console UI, and a basic way to get input from the user
 class Wordle:
@@ -31,12 +33,12 @@ class Wordle:
         self._pretty_print_attempts()
 
     # Automatically respond with "closeness to answer"
-    def get_automated_attempt_response(self, attempt, answer):
+    def get_automated_attempt_response(self, answer):
         response = ''
         for i in range(len(answer)):
-            if attempt[i] == answer[i]:
+            if self.attempts[-1][i] == answer[i]:
                 response += 'O'
-            elif attempt[i] in answer:
+            elif self.attempts[-1][i] in answer:
                 response += '?'
             else:
                 response += 'X'
@@ -72,12 +74,10 @@ class Wordle:
             if self.attempts[-1] == answer:
                 print('Congratz, you solved the wordle!')
                 return True
-            self.get_automated_attempt_response(self.attempts[-1], answer)
+            self.get_automated_attempt_response(answer)
         return False
 
-
-
-    def _validate_word(self, word):
+    def _validate_word(self, word) -> None:
         if not word:
             raise ValueError('Invalid None value for response')
         if len(word) != self.word_length:
@@ -100,46 +100,76 @@ class Wordle:
         print()
 
 
+def _get_freq_dict_key(word, i) -> str:
+    return word[i] + str(i)
+
+
 # The automated solver that will solve a given Wordle
 class WordleSolver:
     def __init__(self, word_length, num_attempts):
         self.word_length = word_length
         self.num_attempts = num_attempts
-        self.filtered_words_by_length = set(filter(lambda word: len(word) == word_length, set(twl.iterator())))
+        self.filtered_words_by_length = set(word.upper() for word in twl.iterator() if len(word) == word_length)
+        self.not_contained_letters = set()
         print("{} potential words".format(len(self.filtered_words_by_length)))
 
-    def create_freq_dict(self):
+    # TODO: Fill in time complexity
+    def create_freq_dict(self, words):
         freq_dict = {}
-        for word in self.filtered_words_by_length:
+        for word in words:
             for i in range(len(word)):
-                key = self._get_freq_dict_key(word, i)
+                key = _get_freq_dict_key(word, i)
                 freq_dict[key] = freq_dict.get(key, 0) + 1
         return freq_dict
 
+    # TODO: Fill in time complexity
     def get_best_freq_score_word(self, freq_dict):
         freq_word_tuple = self.create_word_freq_score_heap(freq_dict)[0]
+        # Tuple: (-freq_score, word). Sample tuple: (-7824, 'SORES')
         return freq_word_tuple[1]
 
     def create_word_freq_score_heap(self, freq_dict):
+        if not freq_dict:
+            print('Warning: There is no freq_dict defined, so freq_score_heap is completely randomized')
         freq_word_tuples = []
         for word in self.filtered_words_by_length:
             freq_score = 0
             for i in range(len(word)):
-                key = self._get_freq_dict_key(word, i)
-                freq_score += freq_dict[key]
+                key = _get_freq_dict_key(word, i)
+                freq_score += freq_dict.get(key, 0)
             freq_word_tuples.append((-freq_score, word))
         heapq.heapify(freq_word_tuples)
         return freq_word_tuples
 
-    def _get_freq_dict_key(self, word, i):
-        return word[i] + str(i)
+    # Filter eliminated words using response consisting of not contained letters and misplaced letters
+    # TODO: Fill in time complexity
+    def filter_eliminated_words(self, attempt, response) -> set:
+        assert len(attempt) == len(response)
+        misplaced_letter_by_index = {}
+        for i in range(len(response)):
+            if response[i] == 'X':
+                self.not_contained_letters.add(attempt[i])
+            elif response[i] == '?':
+                misplaced_letter_by_index[i] = attempt[i]
+        return set(filter(lambda word: self._filter_words_by_invalid_letters(word, misplaced_letter_by_index),
+                          self.filtered_words_by_length))
 
-    def solve(self) -> bool:
+    def _filter_words_by_invalid_letters(self, word, misplaced_letter_by_index):
+        for i in range(len(word)):
+            if word[i] in self.not_contained_letters or word[i] == misplaced_letter_by_index.get(i):
+                return False
+        return True
+
+    def solve(self, answer=None) -> bool:
         wordle = Wordle(self.word_length, self.num_attempts)
-        freq_dict = self.create_freq_dict()
+        freq_dict = self.create_freq_dict(self.filtered_words_by_length)
         next_word = self.get_best_freq_score_word(freq_dict)
-        print(next_word)
+        wordle.make_attempt(next_word)
+        response = wordle.get_user_attempt_response() if answer is None else wordle.get_automated_attempt_response(
+            answer)
+
         return False
+
 
 if __name__ == '__main__':
     args = parser.parse_args()
