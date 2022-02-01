@@ -7,6 +7,8 @@ parser = argparse.ArgumentParser(description='A Wordle puzzle solver.')
 parser.add_argument("-w", "--word_length", type=int, help="Set word length", default=5)
 parser.add_argument("-n", "--num_attempts", type=int, help="Set number of attempts", default=6)
 
+FREQ_LETTER_ANYWHERE_FACTOR = .3
+
 
 # The Wordle class defining a puzzle, console UI, and a basic way to get input from the user
 class Wordle:
@@ -104,6 +106,7 @@ def get_letter_position_freq_dict_key(word, i) -> str:
 
 
 # O(num_words*num_length)
+# This frequency dict roughly maps letters to how often they are correct (O/green)
 def create_letter_position_freq_dict(words):
     freq_dict = {}
     for word in words:
@@ -113,7 +116,16 @@ def create_letter_position_freq_dict(words):
     return freq_dict
 
 
-# The automated solver that will solve a given Wordle
+# O(num_words*num_length)
+# This frequency dict roughly maps letters to how often they are misplaced (?/yellow)
+def create_letter_freq_dict(words):
+    freq_dict = {}
+    for word in words:
+        for i in range(len(word)):
+            freq_dict[word[i]] = freq_dict.get(word[i], 0) + 1
+    return freq_dict
+
+
 class WordleSolver:
     def __init__(self, word_length, num_attempts):
         self.word_length = word_length
@@ -123,20 +135,23 @@ class WordleSolver:
         print("{} potential words".format(len(self.filtered_words_by_length)))
 
     # O(num_words*num_length)
-    def get_best_freq_score_word(self, freq_dict: dict) -> str:
-        freq_word_tuple = self.create_word_freq_score_heap(freq_dict)[0]
+    def get_best_freq_score_word(self, words: set, letter_position_freq_dict: dict, letter_freq_dict: dict) -> str:
+        freq_word_tuple = heapq.heappop(
+            self.create_word_freq_score_heap(words, letter_position_freq_dict, letter_freq_dict))
         # Tuple: (-freq_score, word). Sample tuple: (-7824, 'SORES')
         return freq_word_tuple[1]
 
-    def create_word_freq_score_heap(self, freq_dict: dict) -> list:
-        if not freq_dict:
-            print('Warning: There is no freq_dict defined, so freq_score_heap is completely randomized')
+    # The automated solver that will solve a given Wordle
+    def create_word_freq_score_heap(self, words: set, letter_position_freq_dict: dict, letter_freq_dict: dict) -> list:
+        if not letter_position_freq_dict and letter_freq_dict:
+            print('Warning: There are no freq dicts defined, so freq_score_heap is completely randomized')
         freq_word_tuples = []
-        for word in self.filtered_words_by_length:
+        for word in words:
             freq_score = 0
             for i in range(len(word)):
                 key = get_letter_position_freq_dict_key(word, i)
-                freq_score += freq_dict.get(key, 0)
+                freq_score += letter_position_freq_dict.get(key, 0)
+                freq_score += FREQ_LETTER_ANYWHERE_FACTOR * letter_freq_dict.get(word[i], 0) / self.word_length
             freq_word_tuples.append((-freq_score, word))
         heapq.heapify(freq_word_tuples)
         return freq_word_tuples
@@ -197,8 +212,9 @@ class WordleSolver:
         # Taking most expensive parts of what's in this loop, 
         # the time complexity of WordleSolver.solve is O(num_words*word_length*num_attempts)
         for attempt in range(self.num_attempts):
-            freq_dict = create_letter_position_freq_dict(possible_words)
-            next_word = self.get_best_freq_score_word(freq_dict)
+            letter_position_freq_dict = create_letter_position_freq_dict(possible_words)
+            letter_freq_dict = create_letter_freq_dict(possible_words)
+            next_word = self.get_best_freq_score_word(possible_words, letter_position_freq_dict, letter_freq_dict)
             wordle.make_attempt(next_word)
             response = wordle.get_user_attempt_response() if answer is None else wordle.get_automated_attempt_response(
                 answer)
