@@ -45,23 +45,23 @@ class Wordle:
         self.get_attempt_response(response)
 
     # Prompt user for the "closeness to answer" response to the solver's attempt
-    def get_user_attempt_response(self):
+    def get_user_attempt_response(self) -> str:
         response = input('Please input the response to the last attempt with not contained = X, '
                          'misplaced = ?, and correct = O. Example for word_length = 5: XXOX?\n')
-        self.get_attempt_response(response)
+        return self.get_attempt_response(response)
 
-    def get_attempt_response(self, response):
+    def get_attempt_response(self, response) -> str:
         self._validate_word(response)
         self.responses.append(response.upper())
         self._pretty_print_responses()
+        return response.upper()
 
     # Returns true if game finished with a win. Returns false if game is left unfinished
     def play_wordle_alone_without_answer(self):
         for attempt in range(self.num_attempts):
             self.make_attempt_with_input()
             self.get_user_attempt_response()
-            if self.responses[-1] == self.correct_response:
-                print('Congratz, you solved the wordle!')
+            if self.is_solved():
                 return True
         return False
 
@@ -71,10 +71,15 @@ class Wordle:
         answer = answer.upper()
         for attempt in range(self.num_attempts):
             self.make_attempt_with_input()
-            if self.attempts[-1] == answer:
-                print('Congratz, you solved the wordle!')
-                return True
             self.get_automated_attempt_response(answer)
+            if self.is_solved():
+                return True
+        return False
+
+    def is_solved(self):
+        if self.responses[-1] == self.correct_response:
+            print('Congratz, you solved the wordle!')
+            return True
         return False
 
     def _validate_word(self, word) -> None:
@@ -100,11 +105,20 @@ class Wordle:
         print()
 
 
-def _get_freq_dict_key(word, i) -> str:
+def get_letter_position_freq_dict_key(word, i) -> str:
     return word[i] + str(i)
 
 
 # The automated solver that will solve a given Wordle
+def create_letter_position_freq_dict(words):
+    freq_dict = {}
+    for word in words:
+        for i in range(len(word)):
+            key = get_letter_position_freq_dict_key(word, i)
+            freq_dict[key] = freq_dict.get(key, 0) + 1
+    return freq_dict
+
+
 class WordleSolver:
     def __init__(self, word_length, num_attempts):
         self.word_length = word_length
@@ -114,13 +128,6 @@ class WordleSolver:
         print("{} potential words".format(len(self.filtered_words_by_length)))
 
     # TODO: Fill in time complexity
-    def create_freq_dict(self, words):
-        freq_dict = {}
-        for word in words:
-            for i in range(len(word)):
-                key = _get_freq_dict_key(word, i)
-                freq_dict[key] = freq_dict.get(key, 0) + 1
-        return freq_dict
 
     # TODO: Fill in time complexity
     def get_best_freq_score_word(self, freq_dict):
@@ -135,7 +142,7 @@ class WordleSolver:
         for word in self.filtered_words_by_length:
             freq_score = 0
             for i in range(len(word)):
-                key = _get_freq_dict_key(word, i)
+                key = get_letter_position_freq_dict_key(word, i)
                 freq_score += freq_dict.get(key, 0)
             freq_word_tuples.append((-freq_score, word))
         heapq.heapify(freq_word_tuples)
@@ -162,12 +169,16 @@ class WordleSolver:
 
     def solve(self, answer=None) -> bool:
         wordle = Wordle(self.word_length, self.num_attempts)
-        freq_dict = self.create_freq_dict(self.filtered_words_by_length)
-        next_word = self.get_best_freq_score_word(freq_dict)
-        wordle.make_attempt(next_word)
-        response = wordle.get_user_attempt_response() if answer is None else wordle.get_automated_attempt_response(
-            answer)
-
+        possible_words = self.filtered_words_by_length
+        for attempt in range(self.num_attempts):
+            freq_dict = create_letter_position_freq_dict(possible_words)
+            next_word = self.get_best_freq_score_word(freq_dict)
+            wordle.make_attempt(next_word)
+            response = wordle.get_user_attempt_response() if answer is None else wordle.get_automated_attempt_response(
+                answer)
+            if wordle.is_solved():
+                return True
+            possible_words = self.filter_eliminated_words(next_word, response)
         return False
 
 
