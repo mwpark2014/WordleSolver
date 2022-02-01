@@ -21,6 +21,15 @@ class TestWordleSolverMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.wordle.make_attempt("four")
 
+    def test_get_automated_attempt_response(self):
+        self.wordle.make_attempt("HILLY")
+        self.wordle.get_automated_attempt_response("LIGHT")
+        self.assertEqual("?O?XX", self.wordle.responses[-1])
+        self.wordle.make_attempt("DIGIT")
+        self.wordle.get_automated_attempt_response("LIGHT")
+        self.assertEqual("XOOXO", self.wordle.responses[-1])
+        self.wordle = ws.Wordle(5, 6)
+
     def test_play_wordle_alone_without_answer(self):
         wordle = ws.Wordle(5, 6)
         wordle.make_attempt_with_input = Mock(side_effect=lambda: wordle.make_attempt('POINT'))
@@ -39,7 +48,7 @@ class TestWordleSolverMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             wordle.play_wordle_alone_with_answer(None)
 
-    def test_wordle_solver_create_letter_position_freq_dict(self):
+    def test_solver_create_letter_position_freq_dict(self):
         freq_dict = ws.create_letter_position_freq_dict(self.wordle_solver.filtered_words_by_length)
         self.assertEqual(len(freq_dict), 129)
         self.assertEqual(freq_dict['E2'], 580)
@@ -47,7 +56,7 @@ class TestWordleSolverMethods(unittest.TestCase):
         with self.assertRaises(KeyError):
             test_freq = freq_dict['S5']
 
-    def test_wordle_solver_create_word_freq_score_heap(self):
+    def test_solver_create_word_freq_score_heap(self):
         freq_score_heap = self.wordle_solver.create_word_freq_score_heap(self.initial_freq_dict)
         self.assertEqual(len(freq_score_heap), 8938)
         self.assertEqual(heapq.heappop(freq_score_heap), (-7824, 'SORES'))
@@ -55,26 +64,55 @@ class TestWordleSolverMethods(unittest.TestCase):
         freq_score_heap = self.wordle_solver.create_word_freq_score_heap({})
         self.assertEqual(len(freq_score_heap), 8938)
 
-    def test_wordle_solver_get_best_freq_score_word(self):
+    def test_solver_get_best_freq_score_word(self):
         best_freq_score_word = self.wordle_solver.get_best_freq_score_word(self.initial_freq_dict)
         self.assertEqual(best_freq_score_word, 'SORES')
 
-    def test_wordle_solver_filter_eliminated_words_all_wrong(self):
-        self.assertEqual(len(self.wordle_solver.filter_eliminated_words('OPERA', 'XXXXX')), 789)
+    def test_solver_parse_response_and_filter_all_wrong(self):
+        self.assertEqual(len(self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'OPERA', 'XXXXX')), 789)
         # Need to clean up state side effects
         self.wordle_solver = ws.WordleSolver(5, 6)
 
-    def test_wordle_solver_filter_eliminated_words_all_right(self):
-        self.assertEqual(len(self.wordle_solver.filter_eliminated_words('OPERA', 'OOOOO')), 8938)
+    def test_solver_parse_response_and_filter_all_right(self):
+        self.assertEqual(len(self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'OPERA', 'OOOOO')), 1)
+        self.assertEqual(self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'OPERA', 'OOOOO').pop(), 'OPERA')
         # Need to clean up state side effects
         self.wordle_solver = ws.WordleSolver(5, 6)
 
-    def test_wordle_solver_filter_eliminated_words_some_wrong(self):
-        self.assertEqual(len(self.wordle_solver.filter_eliminated_words('OPERA', 'OOOXX')), 3695)
+    def test_solver_parse_response_and_filter_some_wrong(self):
+        self.assertEqual(len(self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'OPERA', 'OOOXX')), 1)
         # Need to clean up state side effects
         self.wordle_solver = ws.WordleSolver(5, 6)
 
-    def test_wordle_solver_filter_eliminated_words_some_misplaced(self):
-        self.assertEqual(len(self.wordle_solver.filter_eliminated_words('OPERA', 'OOO??')), 8122)
+    def test_solver_parse_response_and_filter_some_misplaced(self):
+        filtered_words = self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'OPERA', 'OOOXX')
+        self.assertEqual(1, len(filtered_words))
+        self.assertEqual('OPENS', filtered_words.pop())
+        # Need to clean up state side effects
+        self.wordle_solver = ws.WordleSolver(5, 6)
+        filtered_words = self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'OPERA', 'OOO??')
+        self.assertEqual(0, len(filtered_words))
+        # Need to clean up state side effects
+        self.wordle_solver = ws.WordleSolver(5, 6)
+
+    def test_solver_parse_response_and_filter_some_misplaced_dupes(self):
+        filtered_words = self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'DIGIT', 'XOOXO')
+        self.assertEqual(len(filtered_words), 13)
+        self.assertTrue('LIGHT' in filtered_words)
+        # Need to clean up state side effects
+        self.wordle_solver = ws.WordleSolver(5, 6)
+
+    def test_solver_parse_response_and_filter_some_misplaced_dupes(self):
+        filtered_words = self.wordle_solver.parse_response_and_filter(
+            self.wordle_solver.filtered_words_by_length, 'HILLY', '?O?XX')
+        self.assertEqual(len(filtered_words), 6)
+        self.assertTrue('LIGHT' in filtered_words)
         # Need to clean up state side effects
         self.wordle_solver = ws.WordleSolver(5, 6)

@@ -10,14 +10,8 @@ parser.add_argument("-n", "--num_attempts", type=int, help="Set number of attemp
 
 # The Wordle class defining a puzzle, console UI, and a basic way to get input from the user
 class Wordle:
-    CHAR_RESULT = {
-        'NOT_CONTAINED': 0,
-        'MISPLACED': 1,
-        'CORRECT': 2,
-    }
-
     # Defaults are defined in the ArgumentParser
-    def __init__(self, word_length, num_attempts):
+    def __init__(self, word_length, num_attempts) -> None:
         self.word_length = word_length
         self.num_attempts = num_attempts
         self.attempts = []
@@ -150,21 +144,42 @@ class WordleSolver:
 
     # Filter eliminated words using response consisting of not contained letters and misplaced letters
     # TODO: Fill in time complexity
-    def filter_eliminated_words(self, attempt, response) -> set:
+    def parse_response_and_filter(self, words: set, attempt: str, response: str) -> set:
         assert len(attempt) == len(response)
-        misplaced_letter_by_index = {}
+        correct_letters_by_index = {}
+        misplaced_letters_by_index = {}
+        uncontained_letters = set()
         for i in range(len(response)):
             if response[i] == 'X':
-                self.not_contained_letters.add(attempt[i])
+                uncontained_letters.add(attempt[i])
             elif response[i] == '?':
-                misplaced_letter_by_index[i] = attempt[i]
-        return set(filter(lambda word: self._filter_words_by_invalid_letters(word, misplaced_letter_by_index),
-                          self.filtered_words_by_length))
+                misplaced_letters_by_index[i] = attempt[i]
+            elif response[i] == 'O':
+                correct_letters_by_index[i] = attempt[i]
+            else:
+                raise ValueError('Invalid character in received response')
+        return set(filter(
+            lambda word: self._filter_eliminated_words(
+                word, correct_letters_by_index, misplaced_letters_by_index, uncontained_letters),
+            words))
 
-    def _filter_words_by_invalid_letters(self, word, misplaced_letter_by_index):
-        for i in range(len(word)):
-            if word[i] in self.not_contained_letters or word[i] == misplaced_letter_by_index.get(i):
+    def _filter_eliminated_words(self, word: str, correct_letters: dict, misplaced_letters: dict,
+                                 uncontained_letters: set):
+        misplaced_letters_list = list(misplaced_letters.values())
+        for i in range(self.word_length):
+            if word[i] == correct_letters.get(i):
+                continue
+            elif correct_letters.get(i) and word[i] != correct_letters.get(i):
                 return False
+            elif word[i] == misplaced_letters.get(i):
+                return False
+            elif word[i] in misplaced_letters_list:
+                misplaced_letters_list.remove(word[i])
+                continue
+            elif word[i] in uncontained_letters:
+                return False
+        if len(misplaced_letters_list) > 0:
+            return False
         return True
 
     def solve(self, answer=None) -> bool:
@@ -178,7 +193,8 @@ class WordleSolver:
                 answer)
             if wordle.is_solved():
                 return True
-            possible_words = self.filter_eliminated_words(next_word, response)
+            possible_words = self.parse_response_and_filter(possible_words, next_word, response)
+            print("{} possible words left".format(len(possible_words)))
         return False
 
 
