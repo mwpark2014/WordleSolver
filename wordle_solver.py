@@ -103,7 +103,7 @@ def get_letter_position_freq_dict_key(word, i) -> str:
     return word[i] + str(i)
 
 
-# The automated solver that will solve a given Wordle
+# O(num_words*num_length)
 def create_letter_position_freq_dict(words):
     freq_dict = {}
     for word in words:
@@ -113,6 +113,7 @@ def create_letter_position_freq_dict(words):
     return freq_dict
 
 
+# The automated solver that will solve a given Wordle
 class WordleSolver:
     def __init__(self, word_length, num_attempts):
         self.word_length = word_length
@@ -121,15 +122,13 @@ class WordleSolver:
         self.not_contained_letters = set()
         print("{} potential words".format(len(self.filtered_words_by_length)))
 
-    # TODO: Fill in time complexity
-
-    # TODO: Fill in time complexity
-    def get_best_freq_score_word(self, freq_dict):
+    # O(num_words*num_length)
+    def get_best_freq_score_word(self, freq_dict: dict) -> str:
         freq_word_tuple = self.create_word_freq_score_heap(freq_dict)[0]
         # Tuple: (-freq_score, word). Sample tuple: (-7824, 'SORES')
         return freq_word_tuple[1]
 
-    def create_word_freq_score_heap(self, freq_dict):
+    def create_word_freq_score_heap(self, freq_dict: dict) -> list:
         if not freq_dict:
             print('Warning: There is no freq_dict defined, so freq_score_heap is completely randomized')
         freq_word_tuples = []
@@ -143,7 +142,7 @@ class WordleSolver:
         return freq_word_tuples
 
     # Filter eliminated words using response consisting of not contained letters and misplaced letters
-    # TODO: Fill in time complexity
+    # O(num_words*word_length)
     def parse_response_and_filter(self, words: set, attempt: str, response: str) -> set:
         assert len(attempt) == len(response)
         correct_letters_by_index = {}
@@ -164,20 +163,30 @@ class WordleSolver:
             words))
 
     def _filter_eliminated_words(self, word: str, correct_letters: dict, misplaced_letters: dict,
-                                 uncontained_letters: set):
+                                 uncontained_letters: set) -> bool:
         misplaced_letters_list = list(misplaced_letters.values())
         for i in range(self.word_length):
+            # Letter at this position matches a correct (O/green) letter, ignore other checks
             if word[i] == correct_letters.get(i):
                 continue
+            # There is a correct (O/green) letter at this position,
+            # but it doesn't match the letter at this position in the current word
             elif correct_letters.get(i) and word[i] != correct_letters.get(i):
                 return False
+            # There is a misplaced (?/yellow) letter at this position,
+            # but it does match the letter at this position in the current word
             elif word[i] == misplaced_letters.get(i):
                 return False
+            # There is a letter at this position in the current word that matches a misplaced (?/yellow) letter, so
+            # let's continue and ignore any uncontained (X/gray) letters matching the same letter for now
             elif word[i] in misplaced_letters_list:
                 misplaced_letters_list.remove(word[i])
                 continue
+            # This letter is not contained (X/gray), so this word should be eliminated
             elif word[i] in uncontained_letters:
                 return False
+        # If we make it to the end and there are misplaced letters that have not been found in the current word,
+        # then this word should be eliminated
         if len(misplaced_letters_list) > 0:
             return False
         return True
@@ -185,6 +194,8 @@ class WordleSolver:
     def solve(self, answer=None) -> bool:
         wordle = Wordle(self.word_length, self.num_attempts)
         possible_words = self.filtered_words_by_length
+        # Taking most expensive parts of what's in this loop, 
+        # the time complexity of WordleSolver.solve is O(num_words*word_length*num_attempts)
         for attempt in range(self.num_attempts):
             freq_dict = create_letter_position_freq_dict(possible_words)
             next_word = self.get_best_freq_score_word(freq_dict)

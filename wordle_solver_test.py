@@ -15,19 +15,19 @@ class TestWordleSolverMethods(unittest.TestCase):
     def test_make_attempt(self):
         self.wordle.make_attempt("point")
         self.wordle.make_attempt("PRICK")
-        self.assertEqual(self.wordle.attempts[0], 'POINT')
-        self.assertEqual(self.wordle.attempts[1], 'PRICK')
-        self.assertEqual(len(self.wordle.attempts), 2)
+        self.assertEqual('POINT', self.wordle.attempts[0])
+        self.assertEqual('PRICK', self.wordle.attempts[1])
+        self.assertEqual(2, len(self.wordle.attempts))
         with self.assertRaises(ValueError):
             self.wordle.make_attempt("four")
 
     def test_get_automated_attempt_response(self):
         self.wordle.make_attempt("HILLY")
         self.wordle.get_automated_attempt_response("LIGHT")
-        self.assertEqual("?O?XX", self.wordle.responses[-1])
+        self.assertEqual(self.wordle.responses[-1], "?O?XX")
         self.wordle.make_attempt("DIGIT")
         self.wordle.get_automated_attempt_response("LIGHT")
-        self.assertEqual("XOOXO", self.wordle.responses[-1])
+        self.assertEqual(self.wordle.responses[-1], "XOOXO")
         self.wordle = ws.Wordle(5, 6)
 
     def test_play_wordle_alone_without_answer(self):
