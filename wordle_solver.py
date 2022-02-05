@@ -214,7 +214,10 @@ class WordleSolver:
         for attempt in range(self.num_attempts):
             letter_position_freq_dict = create_letter_position_freq_dict(possible_words)
             letter_freq_dict = create_letter_freq_dict(possible_words)
-            next_word = self.get_best_freq_score_word(possible_words, letter_position_freq_dict, letter_freq_dict)
+            if attempt == 0:
+                next_word = "SALET"
+            else:
+                next_word = self.get_best_freq_score_word(possible_words, letter_position_freq_dict, letter_freq_dict)
             wordle.make_attempt(next_word)
             response = wordle.get_user_attempt_response() if answer is None else wordle.get_automated_attempt_response(
                 answer)
